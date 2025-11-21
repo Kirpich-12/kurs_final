@@ -8,6 +8,9 @@ import pandas as pd
 CSV_FILE_USD = 'usd_rates.csv'
 CSV_FILE_EUR = 'eur_rates.csv'
 
+#TODO
+#Выводть название банка
+
 
 class Parser:
     def __init__(self, debug_flag: bool = False):

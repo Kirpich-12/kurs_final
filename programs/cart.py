@@ -38,7 +38,7 @@ def load_or_parse():
         df = pd.read_csv(CSV_FILE)
     else:
         print("[INFO] CSV нет — выполняем парсинг")
-        par = Parser('https://myfin.by/currency/usd', True)
+        par = Parser(True)
         data = par.get_usd()  # ans = [address, sell, buy, (lat, lon)]
 
         df = pd.DataFrame([
