@@ -15,19 +15,15 @@ CSV_FILE_EUR = 'eur_rates.csv'
 class Parser:
     def __init__(self, debug_flag: bool = False):
         try:
-
             options = webdriver.ChromeOptions()
             self.debug_flag = debug_flag
 
             if not self.debug_flag:
                 options.add_argument('--headless')
-                
 
             self.driver = webdriver.Chrome(
                 options=options
             )
-
-
         except ValueError:
             print(f'Ошибка доступа к сайту \n Ошибка:{self.status_code}')
         except Exception as e:
@@ -57,7 +53,7 @@ class Parser:
 
 
 
-    def get_usd(self, now_open:bool = False) -> list:
+    def get_usd(self, now_open: bool = False) -> list:
         '''возвращает лист с 5 листами лучших 5 предложений типа(адрес, цена продажи банку, цена покупки у банка, координаты отделения)'''
         answer = []
         driver = self._get_page('https://myfin.by/currency/usd') #получает нашу страницу
@@ -77,12 +73,13 @@ class Parser:
             print(f'bank-row-{i}')
             tds = el.find_elements(By.TAG_NAME, 'td')
             adress = tds[0].find_element(By.CLASS_NAME, 'currencies-courses__branch-name').text
+            bank_name = tds[0].find_element(By.CLASS_NAME, 'currencies-courses__bank-name').text
             sell_course = tds[1].find_element(By.TAG_NAME, 'span').text
             buy_course  = tds[2].find_element(By.TAG_NAME, 'span').text
             coords = tds[7].get_attribute("data-fillial-coords")
             coords = coords.replace('"', '').replace('[', '').replace(']', '').split(',') #бьем строку на лист с двумя эл-ми широта и долгота
             print(coords)
-            ans = [adress, sell_course, buy_course, coords]
+            ans = [adress,bank_name, sell_course, buy_course, coords]
             answer.append(ans) #кидаем в спимок ответа
         return answer
     
@@ -106,32 +103,36 @@ class Parser:
             print(f'bank-row-{i}')
             tds = el.find_elements(By.TAG_NAME, 'td')
             adress = tds[0].find_element(By.CLASS_NAME, 'currencies-courses__branch-name').text
+            bank_name = tds[0].find_element(By.CLASS_NAME, 'currencies-courses__bank-name').text
             sell_course = tds[1].find_element(By.TAG_NAME, 'span').text
             buy_course  = tds[2].find_element(By.TAG_NAME, 'span').text
             coords = tds[7].get_attribute("data-fillial-coords")
             coords = coords.replace('"', '').replace('[', '').replace(']', '').split(',') #бьем строку на лист с двумя эл-ми широта и долгота
             print(coords)
-            ans = [adress, sell_course, buy_course, coords]
+            ans = [adress,bank_name, sell_course, buy_course, coords]
             answer.append(ans) #кидаем в спимок ответа
         return answer
     
+
+    def save(data, file):
+        df = pd.DataFrame([
+                {
+                    "address": rec[0],
+                    "bank_name":rec[1],
+                    "sell_course": float(rec[2]),
+                    "buy_course": float(rec[3]),
+                    "lat": float(rec[4][0]),
+                    "lon": float(rec[4][1])
+                }
+                for rec in data
+            ])
+
+        df.to_csv(file, index=False, encoding="utf-8")
+        print(f"[INFO] Сохранено в {file}")
+
     def __del__(self):
         print('А фсё')
 
-def save(data, file):
-    df = pd.DataFrame([
-            {
-                "address": rec[0],
-                "sell_course": float(rec[1]),
-                "buy_course": float(rec[2]),
-                "lat": float(rec[3][0]),
-                "lon": float(rec[3][1])
-            }
-            for rec in data
-        ])
-
-    df.to_csv(file, index=False, encoding="utf-8")
-    print(f"[INFO] Сохранено в {file}")
 
 
 def main():
@@ -147,4 +148,31 @@ if __name__ == '__main__':
     main()
 
 
+
+
+
+class Parser2:
+     
+     def __init__(
+             self,
+             debug_flag: bool = False,
+             
+             ):
+        try:
+            options = webdriver.ChromeOptions()
+            self.debug_flag = debug_flag
+
+            if not self.debug_flag:
+                options.add_argument('--headless')
+
+            self.driver = webdriver.Chrome(
+                options=options
+            )
+
+        except ValueError:
+            print(f'Ошибка доступа к сайту \n Ошибка:{self.status_code}')
+
+        except Exception as e:
+            print(f'Ошибка при создании драйвера: {e}')
+    
 

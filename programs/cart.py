@@ -17,6 +17,9 @@ import numpy as np
 from folium.plugins import MarkerCluster
 
 
+from .repo import DataRepo
+
+
 # ----------- НАСТРОЙКИ -------------
 
 CITY_NAME = "Минск"
@@ -44,10 +47,11 @@ def load_or_parse():
         df = pd.DataFrame([
             {
                 "address": rec[0],
-                "sell_course": float(rec[1]),
-                "buy_course": float(rec[2]),
-                "lat": float(rec[3][0]),
-                "lon": float(rec[3][1])
+                "bank_name":rec[1],
+                "sell_course": float(rec[2]),
+                "buy_course": float(rec[3]),
+                "lat": float(rec[4][0]),
+                "lon": float(rec[4][1])
             }
             for rec in data
         ])
@@ -60,7 +64,7 @@ def load_or_parse():
 
 def compute_weight(df):
     """Вес: чем ниже курс — тем больше влияние"""
-    df["weight_raw"] = 1 / df["sell_course"]
+    df["weight_raw"] = 1 / df["buy_course"]
 
     # нормализация 0..1 + усиление разницы (gamma)
     min_w, max_w = df["weight_raw"].min(), df["weight_raw"].max()
@@ -86,6 +90,10 @@ def get_color(course, min_c, max_c):
 
 # ----------- ОСНОВНОЙ КОД -------------
 
+data_repo = DataRepo()
+
+branches = data_repo.list_bank_branches()
+
 df = load_or_parse()
 df = compute_weight(df)
 
@@ -105,8 +113,8 @@ HeatMap(
 ).add_to(m)
 
 # --- Маркеры ---
-min_c = df["sell_course"].min()
-max_c = df["sell_course"].max()
+min_c = df["buy_course"].min()
+max_c = df["buy_course"].max()
 
 cluster = MarkerCluster(
     disableClusteringAtZoom=15,   # при приближении точки снова будут раздельно
@@ -115,16 +123,17 @@ cluster = MarkerCluster(
     showCoverageOnHover=False
 ).add_to(m)
 
-min_c = df["sell_course"].min()
-max_c = df["sell_course"].max()
+min_c = df["buy_course"].min()
+max_c = df["buy_course"].max()
 
 for _, row in df.iterrows():
-    color = get_color(row["sell_course"], min_c, max_c)
+    color = get_color(row["buy_course"], min_c, max_c)
 
     popup = f"""
+    <b>{row['bank_name']}</b><br>
     <b>{row['address']}</b><br>
     ✅ Покупка: {row['buy_course']}<br>
-    💲 Продажа: <b>{row['sell_course']}</b><br>
+    💲 Продажа: <b>{row['buy_course']}</b><br>
     """
 
     folium.CircleMarker(
@@ -139,12 +148,12 @@ for _, row in df.iterrows():
 
 
 # --- Лучший курс (звезда) ---
-best = df.loc[df["sell_course"].idxmin()]
+best = df.loc[df["buy_course"].idxmin()]
 
 folium.Marker(
     location=[best["lat"], best["lon"]],
     icon=folium.Icon(color="green", icon="star", prefix="fa"),
-    popup=f"🔥 <b>ЛУЧШИЙ КУРС</b><br>{best['sell_course']}<br>{best['address']}"
+    popup=f"🔥 <b>ЛУЧШИЙ КУРС</b><b>{row['bank_name']}</b><br><br>{best['buy_course']}<br>{best['address']}"
 ).add_to(m)
 
 # --- Сохраняем ---
