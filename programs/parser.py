@@ -5,15 +5,15 @@ from selenium.webdriver.support import expected_conditions as EC
 from time import sleep
 import pandas as pd
 
-CSV_FILE_USD = 'usd_rates.csv'
-CSV_FILE_EUR = 'eur_rates.csv'
 
 #TODO
 #Выводть название банка
 
 
 class Parser:
-    def __init__(self, debug_flag: bool = False):
+    def __init__(
+            self,
+            debug_flag: bool = False):
         try:
             options = webdriver.ChromeOptions()
             self.debug_flag = debug_flag
@@ -51,7 +51,8 @@ class Parser:
             print(e)
             print('=====================================')
 
-
+    def get_branches(self, url:str):
+        """возвращает лист BankBranch сост из отдл и курсов """
 
     def get_usd(self, now_open: bool = False) -> list:
         '''возвращает лист с 5 листами лучших 5 предложений типа(адрес, цена продажи банку, цена покупки у банка, координаты отделения)'''

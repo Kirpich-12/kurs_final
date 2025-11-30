@@ -17,7 +17,7 @@ import numpy as np
 from folium.plugins import MarkerCluster
 
 
-from .repo import DataRepo
+#from .repo import DataRepo
 
 
 # ----------- НАСТРОЙКИ -------------
