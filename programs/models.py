@@ -32,6 +32,9 @@ class Coords:
 
     def __str__(self):
         return f"{self.lon} {self.lat}"
+    
+    def __int__(self):
+        return [self.lon, self.lat]
 
 
 @dataclass

@@ -4,7 +4,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from time import sleep
 
-from .models import (
+from models import (
     BankBranch,
     Coords,
     ExchangeRate,
@@ -54,7 +54,7 @@ class Parser:
             print(e)
             print('=====================================')
         
-    def _get_branch(self, url, now_open:bool = True)-> list[BankBranch] :
+    def get_branch(self, url:str, now_open:bool = True)-> list[BankBranch]:
         driver = self._get_page(url)
         answer = []
         self._press_button('/html/body/div[4]/div/div[3]/button[1]')#жмакает на куки
@@ -94,7 +94,17 @@ class Parser:
                                     rate=sell_course
                                 )
                                 ),
-            )
-            answer.append(ans) #кидаем в спимок ответа
+            ).id
+            ans.id()
+            answer.append(ans) #кидаем в спиcок ответа
         return answer
+    
+    def __del__(self):
+        print('Parser stoped')
+
+
+if __name__ == "__main__":
+    par = Parser()
+    res = par.get_branch('https://myfin.by/currency/usd')
+    print(res)
 

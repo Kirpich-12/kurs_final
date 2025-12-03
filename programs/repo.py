@@ -1,5 +1,5 @@
 
-from .models import (
+from models import (
     Currency,
     Coords,
     BankOrg,
@@ -15,14 +15,14 @@ class DataRepo:
     def __init__(self):
         pass
 
-
+    # хз как с фалами разобраться 
     def set_bank_branch(
             self,
             brank_branch: BankBranch
     ):
         ...
 
-
+    #фильтр 
     def list_bank_branches(
             self,
             curr_from: Currency | None = None,
@@ -30,7 +30,7 @@ class DataRepo:
     ) -> list[BankBranch]:
         ...
 
-
+    #замена
     def update_bank_branche_rates(
             self,
             id: int,
