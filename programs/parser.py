@@ -3,12 +3,17 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from time import sleep
-import pandas as pd
+
+from models import (
+    BankBranch,
+    Coords,
+    ExchangeRate,
+    BankOrg,
+    Currency
+)
 
 
-#TODO
-#Выводть название банка
-
+USD = 'https://myfin.by/currency/usd'
 
 class Parser:
     def __init__(
@@ -50,14 +55,10 @@ class Parser:
             print(f'Кнопка {button_xPath} не была нажата')
             print(e)
             print('=====================================')
-
-    def get_branches(self, url:str):
-        """возвращает лист BankBranch сост из отдл и курсов """
-
-    def get_usd(self, now_open: bool = False) -> list:
-        '''возвращает лист с 5 листами лучших 5 предложений типа(адрес, цена продажи банку, цена покупки у банка, координаты отделения)'''
+        
+    def get_branch(self, url:str, now_open:bool = True)-> list[BankBranch]:
+        driver = self._get_page(url)
         answer = []
-        driver = self._get_page('https://myfin.by/currency/usd') #получает нашу страницу
         self._press_button('/html/body/div[4]/div/div[3]/button[1]')#жмакает на куки
         sleep(2)
         self._press_button('//*[@id="deposit-rate-tabs"]/li[2]/a')# жмакает на режим отделений
@@ -66,6 +67,10 @@ class Parser:
         sleep(3)
         table = driver.find_element(By.XPATH, '//*[@id="currency-table-filials"]/table') #берем таблицу
         sleep(7)
+
+        #TODO
+        #написать для разных длинн парсера
+
         for i in range(2, 998, 2):  # перебираем топ 488(998)
             if i % 20 == 0:
                 self._press_button('//*[@id="load-more-filials"]')
@@ -78,102 +83,33 @@ class Parser:
             sell_course = tds[1].find_element(By.TAG_NAME, 'span').text
             buy_course  = tds[2].find_element(By.TAG_NAME, 'span').text
             coords = tds[7].get_attribute("data-fillial-coords")
-            coords = coords.replace('"', '').replace('[', '').replace(']', '').split(',') #бьем строку на лист с двумя эл-ми широта и долгота
+            lon, lat = coords.replace('"', '').replace('[', '').replace(']', '').split(',') #бьем строку на лист с двумя эл-ми широта и долгота
             print(coords)
-            ans = [adress,bank_name, sell_course, buy_course, coords]
-            answer.append(ans) #кидаем в спимок ответа
-        return answer
-    
-    def get_eur(self, now_open:bool = False) -> list:
-        '''возвращает лист с 5 листами лучших 5 предложений типа(адрес, цена продажи банку, цена покупки у банка, координаты отделения)'''
-        answer = []
-        driver = self._get_page('https://myfin.by/currency/eur') #получает нашу страницу
-        self._press_button('/html/body/div[4]/div/div[3]/button[1]')#жмакает на куки
-        sleep(2)
-        self._press_button('//*[@id="deposit-rate-tabs"]/li[2]/a')# жмакает на режим отделений
-        if now_open: #жмакает кпонку 'Отделения, которые работают сейчас'
-            self._press_button('//*[@id="deposit-rate-tabs"]/li[2]/a')
-        sleep(3)
-        table = driver.find_element(By.XPATH, '//*[@id="currency-table-filials"]/table') #берем таблицу
-        sleep(7)
-        for i in range(2, 998, 2):  # перебираем топ 488(998)
-            if i % 20 == 0:
-                self._press_button('//*[@id="load-more-filials"]')
-                #sleep(2) более этическая версия
-            el = table.find_element(By.ID, f'bank-row-{i}')
-            print(f'bank-row-{i}')
-            tds = el.find_elements(By.TAG_NAME, 'td')
-            adress = tds[0].find_element(By.CLASS_NAME, 'currencies-courses__branch-name').text
-            bank_name = tds[0].find_element(By.CLASS_NAME, 'currencies-courses__bank-name').text
-            sell_course = tds[1].find_element(By.TAG_NAME, 'span').text
-            buy_course  = tds[2].find_element(By.TAG_NAME, 'span').text
-            coords = tds[7].get_attribute("data-fillial-coords")
-            coords = coords.replace('"', '').replace('[', '').replace(']', '').split(',') #бьем строку на лист с двумя эл-ми широта и долгота
-            print(coords)
-            ans = [adress,bank_name, sell_course, buy_course, coords]
-            answer.append(ans) #кидаем в спимок ответа
-        return answer
-    
-
-    def save(data, file):
-        df = pd.DataFrame([
-                {
-                    "address": rec[0],
-                    "bank_name":rec[1],
-                    "sell_course": float(rec[2]),
-                    "buy_course": float(rec[3]),
-                    "lat": float(rec[4][0]),
-                    "lon": float(rec[4][1])
-                }
-                for rec in data
-            ])
-
-        df.to_csv(file, index=False, encoding="utf-8")
-        print(f"[INFO] Сохранено в {file}")
-
-    def __del__(self):
-        print('А фсё')
-
-
-
-def main():
-    par = Parser(True)
-    res = par.get_eur()
-    save(res, CSV_FILE_EUR)
-    for i in res:
-        print(i, '\n')
-    print(f'\n {len(res)}')
-
-    
-if __name__ == '__main__':
-    main()
-
-
-
-
-
-class Parser2:
-     
-     def __init__(
-             self,
-             debug_flag: bool = False,
-             
-             ):
-        try:
-            options = webdriver.ChromeOptions()
-            self.debug_flag = debug_flag
-
-            if not self.debug_flag:
-                options.add_argument('--headless')
-
-            self.driver = webdriver.Chrome(
-                options=options
+            ans = BankBranch( bank_org= BankOrg(bank_name),
+                            address= adress,
+                            coords=Coords(lon, lat),
+                            exchange_rates=(
+                                ExchangeRate(
+                                    curr_from=Currency.BYN,
+                                    curr_to=Currency.USD,
+                                    rate=buy_course
+                                ),
+                                ExchangeRate(
+                                    curr_from=Currency.USD,
+                                    curr_to=Currency.BYN,
+                                    rate=sell_course
+                                )
+                                ),
             )
-
-        except ValueError:
-            print(f'Ошибка доступа к сайту \n Ошибка:{self.status_code}')
-
-        except Exception as e:
-            print(f'Ошибка при создании драйвера: {e}')
+            answer.append(ans) #кидаем в спиcок ответа
+        return answer
     
+    def __del__(self):
+        print('Parser stoped')
+
+
+if __name__ == "__main__":
+    par = Parser()
+    res = par.get_branch(USD)
+    print(res)
 

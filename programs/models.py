@@ -9,6 +9,8 @@ class Currency(StrEnum):
     EUR = "eur"
     CNY = "cny"
 
+class Link(StrEnum):
+    ...
 
 @dataclass
 class BankOrg:
@@ -23,6 +25,9 @@ class ExchangeRate:
     curr_from: Currency
     curr_to: Currency
     rate: float
+    
+    def __str__(self):
+        return f"{self.curr_from} -> {self.curr_to} = {self.rate} \n"
 
 
 @dataclass
@@ -51,3 +56,6 @@ class BankBranch:
             str(self.address) +
             str(self.coords)
         )
+    
+    def __str__(self):
+        return f"Банк:{str(self.bank_org)}, адрес:{str(self.address)}, Координаты: {str(self.coords)}, курсы: \n {str(self.exchange_rates)}"

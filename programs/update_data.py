@@ -1,13 +1,14 @@
-from .repo import DataRepo
-from .parser import Parser
+from repo import DataRepo
+from parser import Parser
 
+USD = 'https://myfin.by/currency/usd'
 
 
 def main():
     data_repo = DataRepo()
-    parser = Parser()
+    parser = Parser(True)
 
-    bank_branches = parser.get_usd()
+    bank_branches = parser.get_branch(USD)
 
     for branch in bank_branches:
         data_repo.set_bank_branch(branch)
