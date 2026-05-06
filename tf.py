@@ -1,10 +1,6 @@
-class Obj:
-    def __init__(self, age:int):
-        self.age = age
-    
-    def __int__(self):
-        return self.age * 2
+el_num = 601
 
-
-obj = int(Obj(3))
-print(obj)
+if el_num % 20 == 0:
+    print( el_num // 20)
+else:
+    print ((el_num // 20) + 1 )
