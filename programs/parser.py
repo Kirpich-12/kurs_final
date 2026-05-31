@@ -59,50 +59,60 @@ class Parser:
     def get_branch(self, url:str, now_open:bool = True)-> list[BankBranch]:
         driver = self._get_page(url)
         answer = []
-        self._press_button('/html/body/div[4]/div/div[3]/button[1]')#жмакает на куки
-        sleep(2)
-        self._press_button('//*[@id="deposit-rate-tabs"]/li[2]/a')# жмакает на режим отделений
-        if now_open: #жмакает кпонку 'Отделения, которые работают сейчас'
-            self._press_button('//*[@id="deposit-rate-tabs"]/li[2]/a')
-        sleep(3)
-        table = driver.find_element(By.XPATH, '//*[@id="currency-table-filials"]/table') #берем таблицу
-        sleep(7)
+        try:
+            self._press_button('/html/body/div[4]/div/div[3]/button[1]')#жмакает на куки
+            sleep(2)
+            self._press_button('//*[@id="deposit-rate-tabs"]/li[2]/a')# жмакает на режим отделений
+            if now_open: #жмакает кпонку 'Отделения, которые работают сейчас'
+                self._press_button('//*[@id="deposit-rate-tabs"]/li[2]/a')
+            sleep(3)
+            table = driver.find_element(By.XPATH, '//*[@id="currency-table-filials"]/table') #берем таблицу
+            sleep(7)
 
-        #TODO
-        #написать для разных длинн парсера
+            #TODO
+            #написать для разных длинн парсера
 
-        for i in range(2, 100, 2):  # перебираем топ 488(998)
-            if i % 20 == 0:
-                self._press_button('//*[@id="load-more-filials"]')
-                #sleep(2) более этическая версия
-            el = table.find_element(By.ID, f'bank-row-{i}')
-            courses = el.find_elements(By.CLASS_NAME, 'currencies-courses__currency-cell')
-            print(f'bank-row-{i}')
-            tds = el.find_elements(By.TAG_NAME, 'td')
-            adress = tds[0].find_element(By.CLASS_NAME, 'currencies-courses__branch-name').text
-            bank_name = tds[0].find_element(By.CLASS_NAME, 'currencies-courses__bank-name').text
-            sell_course = courses[0].text
-            buy_course  = courses[1].text
-            coords = tds[7].get_attribute("data-fillial-coords")
-            lon, lat = coords.replace('"', '').replace('[', '').replace(']', '').split(',') #бьем строку на лист с двумя эл-ми широта и долгота
-            print(coords)
-            ans = BankBranch( bank_org= BankOrg(bank_name),
-                            address= adress,
-                            coords=Coords(lon, lat),
-                            exchange_rates=(
-                                ExchangeRate(
-                                    curr_from=Currency.BYN,
-                                    curr_to=Currency.USD,
-                                    rate=buy_course
-                                ),
-                                ExchangeRate(
-                                    curr_from=Currency.USD,
-                                    curr_to=Currency.BYN,
-                                    rate=sell_course
-                                )
-                                ),
-            )
-            answer.append(ans) #кидаем в спиcок ответа
+            for i in range(2, 100, 2):  # перебираем топ 488(998)
+                try:
+                    if i % 20 == 0:
+                        self._press_button('//*[@id="load-more-filials"]')
+                        #sleep(2) более этическая версия
+                    el = table.find_element(By.ID, f'bank-row-{i}')
+                    courses = el.find_elements(By.CLASS_NAME, 'currencies-courses__currency-cell')
+                    print(f'bank-row-{i}')
+                    tds = el.find_elements(By.TAG_NAME, 'td')
+                    adress = tds[0].find_element(By.CLASS_NAME, 'currencies-courses__branch-name').text
+                    bank_name = tds[0].find_element(By.CLASS_NAME, 'currencies-courses__bank-name').text
+                    sell_course = courses[0].text
+                    buy_course  = courses[1].text
+                    coords = tds[7].get_attribute("data-fillial-coords")
+                    lon, lat = coords.replace('"', '').replace('[', '').replace(']', '').split(',') #бьем строку на лист с двумя эл-ми широта и долгота
+                    print(coords)
+                    ans = BankBranch( bank_org= BankOrg(name=bank_name),
+                                    address= adress,
+                                    coords=Coords(lon=float(lon), lat=float(lat)),
+                                    exchange_rates=[
+                                        ExchangeRate(
+                                            curr_from=Currency.USD,
+                                            curr_to=Currency.BYN,
+                                            rate=float(buy_course)
+                                        ),
+                                        ExchangeRate(
+                                            curr_from=Currency.BYN,
+                                            curr_to=Currency.USD,
+                                            rate=float(sell_course)
+                                        )
+                                        ],
+                    )
+                    answer.append(ans) #кидаем в спиcок ответа
+                except Exception as e:
+                    print(f"[WARNING] Error parsing row {i}: {e}")
+                    continue
+        except Exception as e:
+            print(f"[ERROR] Parser failed: {e}")
+            import traceback
+            traceback.print_exc()
+        
         return answer
     
     def __del__(self):

@@ -4,7 +4,7 @@ Interactive map of exchange points with heatmap and colored markers
 Usage:
     from cart import ExchangeMap
     
-    map_builder = ExchangeMap("usd_rates.csv")
+    map_builder = ExchangeMap()
     map_builder.build()
     map_builder.save_and_open("generated_heatmap.html")
 """
@@ -16,44 +16,37 @@ import folium
 from folium.plugins import HeatMap
 from folium.plugins import MarkerCluster
 
-from parser import Parser
+from repo import DataRepo
 from update_data import get_data
 from models import Link
 
 
 class DataLoader:
-    """Handles data loading from CSV or parsing"""
+    """Handles data loading from database"""
     
-    def __init__(self, csv_file: str):
-        self.csv_file = csv_file
+    def __init__(self):
+        self.repo = DataRepo("branch.db")
     
     def load_or_parse(self) -> pd.DataFrame:
-        """Load CSV if exists, otherwise parse data"""
-        if os.path.exists(self.csv_file):
-            print(f"[INFO] Loading data from {self.csv_file}")
-            return pd.read_csv(self.csv_file)
+        """Load data from database or parse and save to database"""
+        branches = self.repo.list_bank_branches()
+        print(f"\n[DEBUG] Branches from DB: {len(branches)}")
+        
+        if branches:
+            print(f"[INFO] Loading data from database ({len(branches)} branches)")
+            return self.repo.get_branches_as_dataframe()
         else:
-            print("[INFO] CSV not found — parsing data")
+            print("[INFO] Database empty — parsing data from web")
             return self._parse_and_save()
     
     def _parse_and_save(self) -> pd.DataFrame:
-        """Parse data and save to CSV"""
+        """Parse data and save to database"""
+        print("[DEBUG] Calling get_data()...")
         data = get_data(src=Link.USD)
-
-        df = pd.DataFrame([
-            {
-                "address": rec[0],
-                "bank_name": rec[1],
-                "sell_course": float(rec[2]),
-                "buy_course": float(rec[3]),
-                "lat": float(rec[4][0]),
-                "lon": float(rec[4][1])
-            }
-            for rec in data
-        ])
-
-        df.to_csv(self.csv_file, index=False, encoding="utf-8")
-        print(f"[INFO] Data saved to {self.csv_file}")
+        print(f"[DEBUG] get_data() returned {len(data) if data else 0} branches")
+        print(f"[INFO] Data saved to database ({len(data) if data else 0} branches)")
+        df = self.repo.get_branches_as_dataframe()
+        print(f"[DEBUG] DataFrame has {len(df)} rows")
         return df
 
 
@@ -166,20 +159,27 @@ class MapBuilder:
 class ExchangeMap:
     """Main class for creating interactive exchange rate map"""
     
-    def __init__(self, csv_file: str = r"C:\System\Codelab\PyLab\kurs_final\kurs_final\programs\branches.csv", 
-                 city_center: tuple = (53.904, 27.5616), 
+    def __init__(self, city_center: tuple = (53.904, 27.5616), 
                  zoom: int = 12):
-        self.csv_file = csv_file
         self.city_center = city_center
         self.zoom = zoom
         self.df = None
         
-        self.data_loader = DataLoader(csv_file)
+        self.data_loader = DataLoader()
         self.map_builder = MapBuilder(city_center, zoom)
     
     def build(self) -> "ExchangeMap":
         """Build complete map with all layers"""
         self.df = self.data_loader.load_or_parse()
+        
+        print(f"\n[DEBUG] DataFrame shape: {self.df.shape}")
+        print(f"[DEBUG] DataFrame columns: {self.df.columns.tolist()}")
+        print(f"[DEBUG] DataFrame empty: {self.df.empty}")
+        
+        if self.df.empty:
+            print("[ERROR] No data in DataFrame!")
+            return self
+        
         self.df = DataProcessor.compute_weight(self.df)
         
         print(self.df.head())

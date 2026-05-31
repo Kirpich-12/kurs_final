@@ -4,7 +4,7 @@ Interactive map of exchange points with heatmap and colored markers
 Usage:
     from cart2 import ExchangeMap
     
-    map_builder = ExchangeMap("branches.csv")
+    map_builder = ExchangeMap()
     map_builder.build()
     map_builder.save_and_open("generated_heatmap.html")
 """
@@ -17,58 +17,24 @@ import folium
 from folium.plugins import HeatMap
 from folium.plugins import MarkerCluster
 
+from repo import DataRepo
+
 
 class DataLoader:
-    """Handles data loading from branches CSV"""
+    """Handles data loading from database"""
     
-    def __init__(self, csv_file: str):
-        self.csv_file = csv_file
+    def __init__(self):
+        self.repo = DataRepo("branch.db")
     
     def load(self) -> pd.DataFrame:
-        """Load and process CSV data"""
-        if not os.path.exists(self.csv_file):
-            raise FileNotFoundError(f"CSV file not found: {self.csv_file}")
+        """Load and process data from database"""
+        df = self.repo.get_branches_as_dataframe()
         
-        print(f"[INFO] Loading data from {self.csv_file}")
-        df = pd.read_csv(self.csv_file)
+        if df.empty:
+            raise ValueError("No data in database")
         
-        return self._process_data(df)
-    
-    def _process_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Parse coordinates and exchange rates from CSV"""
-        processed = []
-        
-        for _, row in df.iterrows():
-            try:
-                lat, lon = map(float, row['coords'].split(','))
-                rates = json.loads(row['exchange_rates'])
-                
-                buy_rate = None
-                sell_rate = None
-                for rate_obj in rates:
-                    if rate_obj['curr_from'] == 'usd' and rate_obj['curr_to'] == 'byn':
-                        buy_rate = float(rate_obj['rate'])
-                    elif rate_obj['curr_from'] == 'byn' and rate_obj['curr_to'] == 'usd':
-                        sell_rate = float(rate_obj['rate'])
-                
-                if buy_rate is None or sell_rate is None:
-                    continue
-                
-                processed.append({
-                    'address': row['address'],
-                    'bank_name': row['bank_org'],
-                    'buy_course': buy_rate,
-                    'sell_course': sell_rate,
-                    'lat': lat,
-                    'lon': lon
-                })
-            except Exception as e:
-                print(f"[WARNING] Skipped row: {e}")
-                continue
-        
-        result_df = pd.DataFrame(processed)
-        print(f"[INFO] Processed {len(result_df)} locations")
-        return result_df
+        print(f"[INFO] Loaded {len(df)} locations from database")
+        return df
 
 
 class DataProcessor:
@@ -180,15 +146,13 @@ class MapBuilder:
 class ExchangeMap:
     """Main class for creating interactive exchange rate map"""
     
-    def __init__(self, csv_file: str = "branches.csv", 
-                 city_center: tuple = (53.904, 27.5616), 
+    def __init__(self, city_center: tuple = (53.904, 27.5616), 
                  zoom: int = 12):
-        self.csv_file = csv_file
         self.city_center = city_center
         self.zoom = zoom
         self.df = None
         
-        self.data_loader = DataLoader(csv_file)
+        self.data_loader = DataLoader()
         self.map_builder = MapBuilder(city_center, zoom)
     
     def build(self) -> "ExchangeMap":
@@ -215,6 +179,6 @@ class ExchangeMap:
 
 
 if __name__ == "__main__":
-    map_builder = ExchangeMap(r"C:\System\Codelab\PyLab\kurs_final\kurs_final\programs\branches.csv")
+    map_builder = ExchangeMap()
     map_builder.build()
     map_builder.save_and_open()

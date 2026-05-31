@@ -74,8 +74,7 @@ class DataRepo:
         ]
 
         return BankBranch(
-            id=db_branch.id, # Предполагаю, что id есть в вашем классе BankBranch
-            bank_org=BankOrg(db_branch.bank_org),
+            bank_org=BankOrg(name=db_branch.bank_org),
             address=db_branch.address,
             coords=Coords(lon=db_branch.lon, lat=db_branch.lat),
             exchange_rates=exchange_rates
@@ -85,17 +84,37 @@ class DataRepo:
     def set_bank_branch(self, bank_branch: BankBranch) -> BankBranch:
         """Сохранение или обновление отделения в БД"""
         with self.Session() as session:
-            # Проверяем, есть ли уже такое отделение
-            existing = session.query(DBBankBranch).filter_by(id=bank_branch.id).first()
+            # Проверяем, есть ли уже такое отделение (по адресу и имени банка)
+            bank_name = bank_branch.bank_org.name if hasattr(bank_branch.bank_org, 'name') else str(bank_branch.bank_org)
+            existing = session.query(DBBankBranch).filter_by(
+                bank_org=bank_name,
+                address=bank_branch.address
+            ).first()
 
             if existing:
-                # Если есть, обновляем только курсы
-                return self.update_bank_branche_rates(bank_branch.id, bank_branch.exchange_rates)
+                # Если есть, обновляем курсы
+                existing.lat = bank_branch.coords.lat
+                existing.lon = bank_branch.coords.lon
+                
+                # Удаляем старые курсы
+                for old_rate in existing.rates:
+                    session.delete(old_rate)
+                
+                # Добавляем новые
+                for r in bank_branch.exchange_rates:
+                    new_rate = DBExchangeRate(
+                        curr_from=r.curr_from.value,
+                        curr_to=r.curr_to.value,
+                        rate=r.rate
+                    )
+                    existing.rates.append(new_rate)
+                
+                session.commit()
+                return bank_branch
 
             # Создаем новую запись
             new_branch = DBBankBranch(
-                id=bank_branch.id,
-                bank_org=bank_branch.bank_org.value if hasattr(bank_branch.bank_org, 'value') else bank_branch.bank_org.name,
+                bank_org=bank_name,
                 address=bank_branch.address,
                 lat=bank_branch.coords.lat,
                 lon=bank_branch.coords.lon
@@ -186,6 +205,46 @@ class DataRepo:
             session.delete(db_branch)
             session.commit()
             return True
+
+
+    # --- Data Export (для приложений, работающих с DataFrame) ---
+    def get_branches_as_dataframe(self):
+        """Экспортирует все отделения в pandas DataFrame для работы с картами и аналитикой"""
+        import pandas as pd
+        
+        branches = self.list_bank_branches()
+        print(f"[DEBUG] Total branches in DB: {len(branches)}")
+        
+        if not branches:
+            return pd.DataFrame()
+        
+        data = []
+        for i, branch in enumerate(branches):
+            print(f"[DEBUG] Branch {i}: {branch.bank_org.name}, rates: {len(branch.exchange_rates)}")
+            for r in branch.exchange_rates:
+                print(f"  - {r.curr_from.value} -> {r.curr_to.value} = {r.rate}")
+            
+            usd_rate = next((r.rate for r in branch.exchange_rates 
+                           if r.curr_from.value == 'usd' and r.curr_to.value == 'byn'), None)
+            
+            print(f"  USD->BYN rate: {usd_rate}")
+            
+            if usd_rate:
+                bank_name = branch.bank_org.name if hasattr(branch.bank_org, 'name') else str(branch.bank_org)
+                data.append({
+                    'address': branch.address,
+                    'bank_name': bank_name,
+                    'buy_course': usd_rate,
+                    'sell_course': next((r.rate for r in branch.exchange_rates 
+                                       if r.curr_from.value == 'byn' and r.curr_to.value == 'usd'), 
+                                       usd_rate),
+                    'lat': branch.coords.lat,
+                    'lon': branch.coords.lon
+                })
+        
+        df = pd.DataFrame(data)
+        print(f"[DEBUG] Exported {len(df)} rows to DataFrame")
+        return df
 
 
 def main():
