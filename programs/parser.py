@@ -71,17 +71,18 @@ class Parser:
         #TODO
         #написать для разных длинн парсера
 
-        for i in range(2, 998, 2):  # перебираем топ 488(998)
+        for i in range(2, 100, 2):  # перебираем топ 488(998)
             if i % 20 == 0:
                 self._press_button('//*[@id="load-more-filials"]')
                 #sleep(2) более этическая версия
             el = table.find_element(By.ID, f'bank-row-{i}')
+            courses = el.find_elements(By.CLASS_NAME, 'currencies-courses__currency-cell')
             print(f'bank-row-{i}')
             tds = el.find_elements(By.TAG_NAME, 'td')
             adress = tds[0].find_element(By.CLASS_NAME, 'currencies-courses__branch-name').text
             bank_name = tds[0].find_element(By.CLASS_NAME, 'currencies-courses__bank-name').text
-            sell_course = tds[1].find_element(By.TAG_NAME, 'span').text
-            buy_course  = tds[2].find_element(By.TAG_NAME, 'span').text
+            sell_course = courses[0].text
+            buy_course  = courses[1].text
             coords = tds[7].get_attribute("data-fillial-coords")
             lon, lat = coords.replace('"', '').replace('[', '').replace(']', '').split(',') #бьем строку на лист с двумя эл-ми широта и долгота
             print(coords)

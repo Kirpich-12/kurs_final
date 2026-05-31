@@ -8,9 +8,17 @@ class Currency(StrEnum):
     RUB = "rub"
     EUR = "eur"
     CNY = "cny"
+    GBP = "gbp" # Фунт стерлингов
+    PLN = "pln" # Польский злотый
+    CHF = "chf" # Швейцарский франк
+    KZT = "kzt" # Тенге
 
 class Link(StrEnum):
-    ...
+    USD = 'https://myfin.by/currency/usd'
+    EUR = 'https://myfin.by/currency/eur'
+    CNY = 'https://myfin.by/currency/cny'
+    CHF = 'https://myfin.by/currency/chf' #швейцарский франк
+
 
 @dataclass
 class BankOrg:
